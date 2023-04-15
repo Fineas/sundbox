@@ -1,18 +1,14 @@
-use fnv;
 use std::{
     env,
-    ptr,
     panic, 
-    thread,
     process,
     time::Duration,
-    io::{self, Result},
-    hash::{Hash, Hasher},
+    io::{self, Result, Write},
 };
 use process_control::{ChildExt, Control};
 
-const SUINDBOX: &str = "SUINDBOX";
-const SUINDBOX_LENGTH: usize = 19; /* ':' plus 16 hexits */
+const SUNDBOX: &str = "SUNDBOX";
+const SUNDBOX_LENGTH: usize = 19; /* ':' plus 16 hexits */
 
 pub fn fork<CHILD>(
     sandboxed: String,
@@ -43,50 +39,55 @@ fn fork_impl(
     in_child: &mut dyn FnMut(),
 ) -> Result<process_control::Output> {
 
-    let mut occurs = env::var(SUINDBOX).unwrap_or_else(|_| String::new());
-
-    println!("[Parent] occurs = {}", occurs);
+    let mut occurs = env::var(SUNDBOX).unwrap_or_else(|_| String::new());
 
     if occurs.contains(&sandboxed) {
-        println!("[Child]");
+        // println!("[Child]");
         match panic::catch_unwind(panic::AssertUnwindSafe(in_child)) {
             Ok(_) => process::exit(0),
             Err(_) => process::exit(70),
         }
     } else {
-        println!("[Parent]");
-        // Prevent misconfiguration creating a fork bomb
-        if occurs.len() > 16 * SUINDBOX_LENGTH {
-            panic!("festivities: Not forking due to >=16 levels of recursion");
+        // println!("[Parent]");
+        if occurs.len() > 16 * SUNDBOX_LENGTH {
+            panic!("Not forking due to >=16 levels of recursion");
         }
 
         occurs.push_str(&sandboxed);
-        println!("[Parent] occurs = {}", occurs);
 
-        println!("[Parent] current_exe = {:#?}", env::current_exe().unwrap());
+        let mut sundbox =
+            process::Command::new(env::current_exe().expect("current_exe() failed, cannot fork"))
+                .arg(ser_module)
+                // .arg(ser_fn_map)
+                .env(SUNDBOX, &occurs)
+                .stdin(process::Stdio::piped())
+                .stdout(process::Stdio::piped())
+                .stderr(process::Stdio::piped())
+                .spawn()
+                .expect("failed to execute process");
 
-        let mut command =
-            process::Command::new(env::current_exe().expect("current_exe() failed, cannot fork"));
+        let sundbox_stdin = sundbox.stdin.as_mut().unwrap();
+        sundbox_stdin.write_all(ser_fn_map.as_bytes()).expect("failed to write to stdin");
+        drop(sundbox_stdin);
 
-        command
-            .arg(ser_module)
-            .arg(ser_fn_map)
-            .env(SUINDBOX, &occurs)
-            .stdin(process::Stdio::null())
-            .stdout(process::Stdio::piped())
-            .stderr(process::Stdio::piped());
+        let sundbox = sundbox.controlled_with_output()
+                                 .time_limit(Duration::from_millis(timeout))
+                                 .memory_limit(mem_limit)
+                                 .terminate_for_timeout()
+                                 .wait()?
+                                 .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "Process timed out"))?;
 
-        let out = command
-            .spawn()?
-            .controlled_with_output()
-            .time_limit(Duration::from_millis(timeout))
-            .memory_limit(mem_limit)
-            .terminate_for_timeout()
-            .wait()?
-            .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "Process timed out"))?;
-
-        println!("[Parent] out = {:#?}", out);
-
-        Ok(out)
+        // println!("[Parent] out = {:#?}", sundbox);
+        
+        if sundbox.status.success() {
+            println!("{:#?}", String::from_utf8_lossy(&sundbox.stdout));
+            println!("Verifier succeeded!");
+            Ok(sundbox)
+        }
+        else {
+            eprintln!("{:#?}", String::from_utf8_lossy(&sundbox.stderr));
+            eprintln!("Verifier threw Error");
+            Ok(sundbox)
+        }
     }
 }
