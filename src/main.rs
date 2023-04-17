@@ -1,4 +1,4 @@
-use sandbox;
+use sundbox;
 use std::{
     io,
     env,
@@ -6,6 +6,7 @@ use std::{
     panic, 
     thread,
     process,
+    error::Error,
     time::Duration,
 };
 use std::collections::HashMap;
@@ -92,7 +93,7 @@ fn main() {
             let mem_limit_int = mem_limit.parse::<usize>().unwrap();
             // println!("[sandbox] Memory Limit = {}", mem_limit);
 
-            let _sundbox_result = sandbox::fork(String::from("sandboxed"), arg1.to_string(), ser_fn_info_map, Some(time_limit_int), Some(mem_limit_int), || {
+            let sundbox_result = sundbox::fork(String::from("sandboxed"), arg1.to_string(), ser_fn_info_map, Some(time_limit_int), Some(mem_limit_int), || {
                 move_bytecode_verifier::verify_module(&compiled_module).map_err(|err| {
                     SuiError::ModuleVerificationFailure {
                         error: err.to_string(),
@@ -101,11 +102,11 @@ fn main() {
             }).unwrap();
 
             
-            // let sunbox_stdout = String::from_utf8_lossy(&sundbox_result.stdout);
-            // let sunbox_stderr = String::from_utf8_lossy(&sundbox_result.stderr);
+            let sunbox_stdout = String::from_utf8_lossy(&sundbox_result.stdout);
+            let sunbox_stderr = String::from_utf8_lossy(&sundbox_result.stderr);
 
-            // println!("{:?}", sunbox_stdout);
-            // eprintln!("{:?}", sunbox_stderr);
+            println!("{:?}", sunbox_stdout.trim().replace("\"", ""));
+            eprintln!("{:?}", sunbox_stderr.trim().replace("\"", ""));
             process::exit(0)
             
         }
@@ -136,7 +137,7 @@ fn main() {
             let mem_limit_int = mem_limit.parse::<usize>().unwrap();
             // println!("[sandbox] Memory Limit = {}", mem_limit);
 
-            let _sundbox_result = sandbox::fork(String::from("sandboxed"), arg1.to_string(), input, Some(time_limit_int), Some(mem_limit_int), || {
+            let sundbox_result = sundbox::fork(String::from("sandboxed"), arg1.to_string(), input, Some(time_limit_int), Some(mem_limit_int), || {
                 sui_bytecode_verifier::verify_module(&compiled_module, &fn_info_bmap).map_err(|err| {
                     SuiError::ModuleVerificationFailure {
                         error: err.to_string(),
@@ -144,11 +145,11 @@ fn main() {
                 }).unwrap();
             }).unwrap();
             
-            // let sunbox_stdout = String::from_utf8_lossy(&sundbox_result.stdout);
-            // let sunbox_stderr = String::from_utf8_lossy(&sundbox_result.stderr);
+            let sunbox_stdout = String::from_utf8_lossy(&sundbox_result.stdout);
+            let sunbox_stderr = String::from_utf8_lossy(&sundbox_result.stderr);
 
-            // println!("{:?}", sunbox_stdout);
-            // eprintln!("{:?}", sunbox_stderr);
+            println!("{:?}", sunbox_stdout.trim().replace("\"", ""));
+            eprintln!("{:?}", sunbox_stderr.trim().replace("\"", ""));
             process::exit(0)
 
         }
@@ -172,45 +173,47 @@ fn main() {
                     .collect();
                 // println!("[sandbox] Function Map = {:#?}", fn_info_bmap);
 
-                let sundbox_result = sandbox::fork(String::from("sandboxed"), arg1.to_string(), input, None, None, || {
-                    sui_bytecode_verifier::verify_module(&compiled_module, &fn_info_bmap).map_err(|err| {
-                        SuiError::ModuleVerificationFailure {
-                            error: err.to_string(),
+                let sundbox_result = sundbox::fork(String::from("sandboxed"), arg1.to_string(), input, None, None, || {
+                    match sui_bytecode_verifier::verify_module(&compiled_module, &fn_info_bmap) {
+                        Ok(_) => (),
+                        Err(err) => { 
+                            eprintln!("{:?}", err.source().as_ref().unwrap());
                         }
-                    }).unwrap();
+                    };
                 }).unwrap();
 
                 let sunbox_stdout = String::from_utf8_lossy(&sundbox_result.stdout);
                 let sunbox_stderr = String::from_utf8_lossy(&sundbox_result.stderr);
     
-                println!("{:?}", sunbox_stdout);
-                eprintln!("{:?}", sunbox_stderr);
+                println!("{:?}", sunbox_stdout.trim().replace("\"", ""));
+                eprintln!("{:?}", sunbox_stderr.trim().replace("\"", ""));
                 process::exit(0)
 
             }
             else { 
                 // println!("[sandbox] CHILD - move verifier");
 
-                let sundbox_result = sandbox::fork(String::from(""), String::from(""), String::from(""), None, None, || {
-                    move_bytecode_verifier::verify_module(&compiled_module).map_err(|err| {
-                        SuiError::ModuleVerificationFailure {
-                            error: err.to_string(),
+                let sundbox_result = sundbox::fork(String::from(""), String::from(""), String::from(""), None, None, || {
+                    match move_bytecode_verifier::verify_module(&compiled_module) {
+                        Ok(_) => (),
+                        Err(err) => {
+                            eprintln!("{:?}", err.source().unwrap());
                         }
-                    }).unwrap();
+                    };
                 }).unwrap();
                 
                 let sunbox_stdout = String::from_utf8_lossy(&sundbox_result.stdout);
                 let sunbox_stderr = String::from_utf8_lossy(&sundbox_result.stderr);
     
-                println!("{:?}", sunbox_stdout);
-                eprintln!("{:?}", sunbox_stderr);
+                println!("{:?}", sunbox_stdout.trim().replace("\"", ""));
+                eprintln!("{:?}", sunbox_stderr.trim().replace("\"", ""));
                 process::exit(0)
 
             }
         }   
     
         _ => {
-            eprintln!("[sandbox] Invalid number of arguments!");
+            eprintln!("[sundbox] Invalid number of arguments!");
             process::exit(70)
         }
     

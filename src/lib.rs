@@ -8,7 +8,7 @@ use std::{
 use process_control::{ChildExt, Control};
 
 const SUNDBOX: &str = "SUNDBOX";
-const SUNDBOX_LENGTH: usize = 19; /* ':' plus 16 hexits */
+const SUNDBOX_LENGTH: usize = 19;
 
 pub fn fork<CHILD>(
     sandboxed: String,
@@ -58,7 +58,6 @@ fn fork_impl(
         let mut sundbox =
             process::Command::new(env::current_exe().expect("current_exe() failed, cannot fork"))
                 .arg(ser_module)
-                // .arg(ser_fn_map)
                 .env(SUNDBOX, &occurs)
                 .stdin(process::Stdio::piped())
                 .stdout(process::Stdio::piped())
@@ -79,15 +78,8 @@ fn fork_impl(
 
         // println!("[Parent] out = {:#?}", sundbox);
         
-        if sundbox.status.success() {
-            println!("{:#?}", String::from_utf8_lossy(&sundbox.stdout));
-            println!("Verifier succeeded!");
-            Ok(sundbox)
-        }
-        else {
-            eprintln!("{:#?}", String::from_utf8_lossy(&sundbox.stderr));
-            eprintln!("Verifier threw Error");
-            Ok(sundbox)
-        }
+        // println!("{:#?}", String::from_utf8_lossy(&sundbox.stdout));
+        // eprintln!(">> {:#?}", String::from_utf8_lossy(&sundbox.stderr));
+        Ok(sundbox)
     }
 }

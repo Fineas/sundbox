@@ -7475,25 +7475,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sandbox"
-version = "0.1.0"
-dependencies = [
- "crossbeam-channel",
- "fnv",
- "libc 0.2.140",
- "mmap",
- "move-binary-format",
- "move-bytecode-verifier",
- "process_control",
- "rlimit",
- "serde 1.0.159",
- "serde_json",
- "serde_json_any_key",
- "sui-types",
- "sui-verifier",
-]
-
-[[package]]
 name = "schannel"
 version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8410,6 +8391,25 @@ dependencies = [
  "move-core-types",
  "sui-types",
  "workspace-hack",
+]
+
+[[package]]
+name = "sundbox"
+version = "0.1.0"
+dependencies = [
+ "crossbeam-channel",
+ "fnv",
+ "libc 0.2.140",
+ "mmap",
+ "move-binary-format",
+ "move-bytecode-verifier",
+ "process_control",
+ "rlimit",
+ "serde 1.0.159",
+ "serde_json",
+ "serde_json_any_key",
+ "sui-types",
+ "sui-verifier",
 ]
 
 [[package]]
